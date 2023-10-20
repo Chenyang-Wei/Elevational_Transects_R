@@ -1,7 +1,9 @@
 # Introduction. -----------------------------------------------------------
 
-# 1) Join the rotated/extended transects with
-#   the corresponding segments.
+# 1) Calculated the NDVI/VCH differences
+#   of the rotated/extended transect segments.
+# 2) Join the NDVI/VCH differences with
+#   the corresponding sampled transects.
 
 # Updated: 10/20/2023.
 
