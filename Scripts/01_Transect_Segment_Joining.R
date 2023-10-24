@@ -5,7 +5,7 @@
 # 2) Join the NDVI/VCH differences with
 #   the corresponding sampled transects.
 
-# Updated: 10/20/2023.
+# Updated: 10/24/2023.
 
 
 # 0) Setup. ---------------------------------------------------------------
@@ -23,8 +23,9 @@ wd_Transects <-
             "Elevational_Transects_LOCAL",
             "Sampled_Transects")
 
-# Define the folder name, file name prefix, and group name.
-extension <- TRUE
+# Define several specific names
+#   for either the extended or rotated transects.
+extension <- FALSE
 
 if (extension) {
   
@@ -34,13 +35,21 @@ if (extension) {
   
   groupName <- "ratio"
   
+  NDVI_rawDiff_VarName <- "NDVI_1"
+  
+  VCH_rawDiff_VarName <- "VCH_1"
+  
 } else {
   
   folderName <- "Rotation"
   
   filePrefix <- "rotated"
   
-  groupName <- "angle"
+  groupName <- "theta"
+  
+  NDVI_rawDiff_VarName <- "NDVI_0"
+  
+  VCH_rawDiff_VarName <- "VCH_0"
   
 }
 
@@ -58,6 +67,7 @@ sampled_SHP <- st_read(
 
 nrow(sampled_SHP) # 66776.
 head(sampled_SHP)
+summary(sampled_SHP)
 
 # Load the processed transects.
 processed_FN <- paste0(filePrefix, "Transects")
@@ -69,7 +79,7 @@ processed_SHP <- st_read(
   layer = processed_FN,
   stringsAsFactors = TRUE)
 
-nrow(processed_SHP) # 400656.
+nrow(processed_SHP) # 400656 (extended/rotated).
 head(processed_SHP)
 
 # Load the processed transect segments with the NDVI data.
@@ -82,7 +92,7 @@ NDVIsegments_SHP <- st_read(
   layer = NDVIsegments_FN,
   stringsAsFactors = TRUE)
 
-nrow(NDVIsegments_SHP) # 756264.
+nrow(NDVIsegments_SHP) # 756264 (extended) or 801312 (rotated).
 head(NDVIsegments_SHP)
 
 # Load the processed transect segments with the VCH data.
@@ -95,26 +105,26 @@ VCHsegments_SHP <- st_read(
   layer = VCHsegments_FN,
   stringsAsFactors = TRUE)
 
-nrow(VCHsegments_SHP) # 756264.
+nrow(VCHsegments_SHP) # 756264 (extended) or 801312 (rotated).
 head(VCHsegments_SHP)
 
 
 # 2) Data preprocessing. --------------------------------------------------
 
 # Select the NDVI segment variables.
-vars_NDVI <- c("ET_ID", "Segment_ID", "avg_Elv", "avg_NDVI")
-
-vars_NDVI <- c(vars_NDVI, groupName)
-  
+vars_NDVI <- c("ET_ID", "Segment_ID", 
+               "avg_Elv", "avg_NDVI", 
+               groupName)
+ 
 NDVIsegments_SHP <- NDVIsegments_SHP %>% 
   select(all_of(vars_NDVI))
 
 head(NDVIsegments_SHP)
 
 # Select the VCH segment variables.
-vars_VCH <- c("ET_ID", "Segment_ID", "avg_Elv", "avg_VCH")
-
-vars_VCH <- c(vars_VCH, groupName)
+vars_VCH <- c("ET_ID", "Segment_ID", 
+              "avg_Elv", "avg_VCH", 
+              groupName)
   
 VCHsegments_SHP <- VCHsegments_SHP %>% 
   select(all_of(vars_VCH))
@@ -151,11 +161,12 @@ NDVIsegments_DF <- merge(
   all = FALSE
 )
 
+# Remove the segments without NDVI (NAs).
 NDVIsegments_DF <- NDVIsegments_DF %>% 
   drop_na()
 
 summary(NDVIsegments_DF)
-nrow(NDVIsegments_DF) # 377839.
+nrow(NDVIsegments_DF) # 377839 (extended) or 400417 (rotated).
 
 
 # 4) VCH segment joining. -------------------------------------------------
@@ -180,11 +191,12 @@ VCHsegments_DF <- merge(
   all = FALSE
 )
 
+# Remove the segments without VCH (NAs).
 VCHsegments_DF <- VCHsegments_DF %>% 
   drop_na()
 
 summary(VCHsegments_DF)
-nrow(VCHsegments_DF) # 376795.
+nrow(VCHsegments_DF) # 376795 (extended) or 399414 (rotated).
 
 
 # 5) Difference calculation. ----------------------------------------------
@@ -211,7 +223,7 @@ VCHsegments_DF <- VCHsegments_DF %>%
 
 summary(VCHsegments_DF)
 
-# Remove the NA caused by "Elv_Diff == 0".
+# Remove the NAs caused by "Elv_Diff == 0".
 NDVIsegments_DF <- NDVIsegments_DF %>% 
   drop_na()
 
@@ -225,19 +237,21 @@ summary(VCHsegments_DF)
 
 # 6) Joining segments and transects. --------------------------------------
 
-# Remove segments without NDVI.
+# Remove the transects with missing NDVI difference
+#   in any segment pairs.
 NDVIsegments_Spreaded <- NDVIsegments_DF %>% 
   spread(key = groupName, value = NDVI_diff) %>% 
   drop_na()
 
-NDVIsegments_Spreaded %>% nrow() # 46301.
+NDVIsegments_Spreaded %>% nrow() # 46301 (extended) or 66700 (rotated).
 
-# Remove segments without VCH.
+# Remove the transects with missing VCH difference
+#   in any segment pairs.
 VCHsegments_Spreaded <- VCHsegments_DF %>% 
   spread(key = groupName, value = VCH_diff) %>% 
   drop_na()
 
-VCHsegments_Spreaded %>% nrow() # 45935.
+VCHsegments_Spreaded %>% nrow() # 45935 (extended) or 66412 (rotated).
 
 # Rename the columns. 
 NDVIsegments_Renamed <- NDVIsegments_Spreaded %>% 
@@ -255,9 +269,14 @@ summary(VCHsegments_Renamed)
 ## Join the segment variables with the sampled transects.
 # NDVI differences.
 sampled_RawNDVIdiff <- sampled_SHP %>% 
-  mutate(NDVI_1 = U_NDVI - L_NDVI) %>% 
-  select(ET_ID, NDVI_1) %>% 
+  mutate(NDVI_rawDiff = U_NDVI - L_NDVI) %>% 
+  select(ET_ID, NDVI_rawDiff) %>% 
   drop_na()
+
+sampled_RawNDVIdiff <- 
+  sampled_RawNDVIdiff %>% 
+  rename_at("NDVI_rawDiff", 
+            ~ NDVI_rawDiff_VarName)
 
 summary(sampled_RawNDVIdiff)
 nrow(sampled_RawNDVIdiff) # 66744.
@@ -270,13 +289,18 @@ transects_NDVIdiff <- merge(
 )
 
 summary(transects_NDVIdiff)
-nrow(transects_NDVIdiff) # 46301.
+nrow(transects_NDVIdiff) # 46301 (extended) or 66698 (rotated).
 
 # VCH differences.
 sampled_RawVCHdiff <- sampled_SHP %>% 
-  mutate(VCH_1 = U_CanopyHt - L_CanopyHt) %>% 
-  select(ET_ID, VCH_1) %>% 
+  mutate(VCH_rawDiff = U_CanopyHt - L_CanopyHt) %>% 
+  select(ET_ID, VCH_rawDiff) %>% 
   drop_na()
+
+sampled_RawVCHdiff <- 
+  sampled_RawVCHdiff %>% 
+  rename_at("VCH_rawDiff", 
+            ~ VCH_rawDiff_VarName)
 
 summary(sampled_RawVCHdiff)
 nrow(sampled_RawVCHdiff) # 66602.
@@ -289,9 +313,9 @@ transects_VCHdiff <- merge(
 )
 
 summary(transects_VCHdiff)
-nrow(transects_VCHdiff) # 45935.
+nrow(transects_VCHdiff) # 45935 (extended) or 66404 (rotated).
 
-# Combine the two types of differences.
+# Combine the NDVI and VCH differences.
 transects_TwoDiff <- merge(
   x = transects_NDVIdiff,
   y = st_drop_geometry(transects_VCHdiff),
@@ -300,7 +324,7 @@ transects_TwoDiff <- merge(
 )
 
 summary(transects_TwoDiff)
-nrow(transects_TwoDiff) # 45872.
+nrow(transects_TwoDiff) # 45872 (extended) or 66345 (rotated).
 
 
 # 7) Result output. -------------------------------------------------------
