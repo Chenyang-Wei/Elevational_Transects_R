@@ -1,6 +1,6 @@
 # Introduction. -----------------------------------------------------------
 
-# 1) Calculated the NDVI/VCH differences
+# 1) Calculate the NDVI/VCH differences
 #   of the rotated/extended transect segments.
 # 2) Join the NDVI/VCH differences with
 #   the corresponding sampled transects.
@@ -16,14 +16,14 @@ library(sf)
 
 ## Object definition.
 # Define the working directories.
-wd_Treeline <- "C:/Research_Projects/Treeline_LOCAL/"
+wd_Treeline <- "C:/Research_Projects/Treeline_LOCAL"
 
 wd_Transects <- 
   file.path(wd_Treeline, 
             "Elevational_Transects_LOCAL",
             "Sampled_Transects")
 
-# Define several specific names
+# Define the variable/file/folder names
 #   for either the extended or rotated transects.
 extension <- FALSE
 
@@ -115,7 +115,7 @@ head(VCHsegments_SHP)
 vars_NDVI <- c("ET_ID", "Segment_ID", 
                "avg_Elv", "avg_NDVI", 
                groupName)
- 
+
 NDVIsegments_SHP <- NDVIsegments_SHP %>% 
   select(all_of(vars_NDVI))
 
