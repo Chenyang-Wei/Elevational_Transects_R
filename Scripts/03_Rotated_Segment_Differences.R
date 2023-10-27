@@ -1,7 +1,7 @@
 # Introduction. -----------------------------------------------------------
 
 # 1) Create a box plot of the NDVI/VCH differences
-#   of the extended transect segments.
+#   of the rotated transect segments.
 
 # Updated: 10/27/2023.
 
@@ -28,11 +28,11 @@ wd_Figs <-
   file.path(wd_Transects,
             "Figures")
 
-# Define the variable/file/folder names
+# Define the file/folder names
 #   for the extended transects.
-folderName <- "Extension"
+folderName <- "Rotation"
 
-filePrefix <- "extended"
+filePrefix <- "rotated"
 
 
 # 1) Dataset loading. -----------------------------------------------------
@@ -47,7 +47,7 @@ transects_TwoDiff_SHP <- st_read(
   layer = TwoDiff_FN,
   stringsAsFactors = TRUE)
 
-nrow(transects_TwoDiff_SHP) # 45872.
+nrow(transects_TwoDiff_SHP) # 66345.
 # summary(transects_TwoDiff_SHP)
 
 
@@ -65,12 +65,14 @@ transects_NDVIdiff_DF <-
 
 # head(transects_NDVIdiff_DF)
 
-# Rename the columns. 
+# Rename the columns.
 transects_NDVIdiff_Renamed <- 
   transects_NDVIdiff_DF %>% 
   rename_with(.fn = ~ gsub(prefix, "", .), # Remove the prefix.
               .cols = -ET_ID) %>% 
-  rename_with(.fn = ~ gsub("_", ".", .), # Replace "_" with ".".
+  rename_with(.fn = ~ gsub("\\.", "-", .), # Replace "." with "-".
+              .cols = -ET_ID) %>% 
+  rename_with(.fn = ~ str_c(., "°"), # Add a "°" at the end.
               .cols = -ET_ID)
 
 # head(transects_NDVIdiff_Renamed)
@@ -78,7 +80,7 @@ transects_NDVIdiff_Renamed <-
 # Rearrange the dataset.
 transects_NDVIdiff_Gathered <- 
   transects_NDVIdiff_Renamed %>% 
-  gather(key = "Ratio", 
+  gather(key = "Angle", 
          value = "Difference", 
          -ET_ID) %>% 
   mutate(Type = varName)
@@ -105,7 +107,9 @@ transects_VCHdiff_Renamed <-
   transects_VCHdiff_DF %>% 
   rename_with(.fn = ~ gsub(prefix, "", .), # Remove the prefix.
               .cols = -ET_ID) %>% 
-  rename_with(.fn = ~ gsub("_", ".", .), # Replace "_" with ".".
+  rename_with(.fn = ~ gsub("\\.", "-", .), # Replace "." with "-".
+              .cols = -ET_ID) %>% 
+  rename_with(.fn = ~ str_c(., "°"), # Add a "°" at the end.
               .cols = -ET_ID)
 
 # head(transects_VCHdiff_Renamed)
@@ -113,7 +117,7 @@ transects_VCHdiff_Renamed <-
 # Rearrange the dataset.
 transects_VCHdiff_Gathered <- 
   transects_VCHdiff_Renamed %>% 
-  gather(key = "Ratio", 
+  gather(key = "Angle", 
          value = "Difference", 
          -ET_ID) %>% 
   mutate(Type = varName)
@@ -140,9 +144,9 @@ transects_TwoDiff_Processed <-
 
 # Change the format and level orders of "Angle" and "Type"
 #   for better ggplots.
-transects_TwoDiff_Processed$Ratio <- 
-  transects_TwoDiff_Processed$Ratio %>% 
-  as.factor()
+transects_TwoDiff_Processed$Angle <- factor(
+  transects_TwoDiff_Processed$Angle, 
+  c("-90°", "-60°", "-30°", "0°", "30°", "60°", "90°"))
 
 transects_TwoDiff_Processed$Type <- factor(
   transects_TwoDiff_Processed$Type, 
@@ -164,7 +168,7 @@ NDVI_color <- "darkgreen"
 boxplot <- 
   ggplot(transects_TwoDiff_Processed) +
   geom_boxplot(
-    mapping = aes(x = Ratio, y = Difference, 
+    mapping = aes(x = Angle, y = Difference, 
                   fill = Type, color = Type), 
     position = position_dodge(0.5), 
     width = 0.5, 
@@ -172,11 +176,12 @@ boxplot <-
   geom_hline(yintercept = 0,
              color = "red", alpha = 0.5,
              lty = "dashed", lwd = 0.5) + 
-  xlab("Ratio") +
+  xlab("Angle") +
   scale_y_continuous(
     # Features of the first Y-axis (VCH).
     name = "Canopy height difference (m)",
-    limits = c(-20, 10),
+    limits = c(-16, 8),
+    breaks = seq(-15, 5, by = 5),
     
     # Add a second Y-axis (NDVI) and specify its features.
     sec.axis = sec_axis(~ . / coeff, 
