@@ -37,7 +37,7 @@ filePrefix <- "rotated"
 
 # 1) Dataset loading. -----------------------------------------------------
 
-# Load the NDVI/VCH differences of the extended transects.
+# Load the NDVI/VCH differences of the rotated transects.
 TwoDiff_FN <- paste0(filePrefix, "Transects_TwoDiff")
 
 transects_TwoDiff_SHP <- st_read(
